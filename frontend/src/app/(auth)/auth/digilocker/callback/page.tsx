@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 import { landingPathFor } from "@/components/auth/LoginForm";
 
-export default function DigilockerCallbackPage() {
+function CallbackInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  
-  // Use a ref to prevent double-firing in React strict mode
   const processedRef = useRef(false);
 
   useEffect(() => {
@@ -39,8 +37,9 @@ export default function DigilockerCallbackPage() {
         setToken(response.access_token);
         const user = await api.me();
         router.replace(landingPathFor(user));
-      } catch (err: any) {
-        setError(err.message || "Failed to log in with Digilocker.");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to log in with Digilocker.";
+        setError(msg);
         setTimeout(() => router.replace("/login"), 3000);
       }
     }
@@ -68,5 +67,24 @@ export default function DigilockerCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function DigilockerCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[#FFFCEB] px-6 py-12">
+          <div className="w-full max-w-md rounded-2xl border border-[#10220F] bg-white p-8 text-center">
+            <div className="mb-6 flex justify-center">
+              <span className="h-10 w-10 animate-spin rounded-full border-4 border-[#10220F] border-t-transparent"></span>
+            </div>
+            <h2 className="text-xl font-bold text-[#10220F]">Loading</h2>
+          </div>
+        </div>
+      }
+    >
+      <CallbackInner />
+    </Suspense>
   );
 }

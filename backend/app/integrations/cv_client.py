@@ -42,6 +42,8 @@ from typing import Dict, List, Optional, Protocol, Sequence, Tuple
 import cv2
 import numpy as np
 
+from tenacity import retry, stop_after_attempt, wait_exponential
+
 from app.core.config import settings
 from app.models.enums import DetectionSource, ViewCategory
 
@@ -771,8 +773,15 @@ class GeminiProvider:
         self.indicator_labels = indicator_labels
 
     def detect(self, image_bgr: np.ndarray, view: ViewCategory) -> CvResult:
-        from google import genai
-        from google.genai import types
+        try:
+            from google import genai
+            from google.genai import types
+        except ImportError as exc:
+            raise CvError(
+                "google-genai not installed",
+                "Hygiene photo checks are misconfigured.",
+                retryable=False,
+            ) from exc
         import json
 
         if not settings.GOOGLE_API_KEY:
@@ -803,28 +812,28 @@ class GeminiProvider:
         )
 
         try:
-            from tenacity import retry, stop_after_attempt, wait_exponential
-            
+
             @retry(
                 stop=stop_after_attempt(5),
                 wait=wait_exponential(multiplier=1, min=2, max=10),
-                reraise=True
+                reraise=True,
             )
             def _call_api():
                 return client.models.generate_content(
-                    model='gemini-3.6-flash',
+                    model=getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash"),
                     contents=[
-                        types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'),
-                        prompt
+                        types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                        prompt,
                     ],
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
                     ),
                 )
-                
+
             response = _call_api()
-            
-            detections_data = json.loads(response.text)
+
+            raw_text = getattr(response, "text", None) or "[]"
+            detections_data = json.loads(raw_text)
             
             detections = []
             for d in detections_data:

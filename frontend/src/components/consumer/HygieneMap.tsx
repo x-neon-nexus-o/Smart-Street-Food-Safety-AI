@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import Link from "next/link";
@@ -39,17 +38,11 @@ interface HygieneMapProps {
 
 export default function HygieneMap({ stalls }: HygieneMapProps) {
   // Center defaults to a general location if no stalls are available.
-  const [center, setCenter] = useState<{ lat: number; lng: number }>({
-    lat: 20.5937,
-    lng: 78.9629,
-  });
-
-  useEffect(() => {
-    // If there are stalls, try to center on the first one or calculate bounding box
-    if (stalls.length > 0) {
-      setCenter({ lat: stalls[0].latitude, lng: stalls[0].longitude });
-    }
-  }, [stalls]);
+  const defaultCenter = { lat: 20.5937, lng: 78.9629 };
+  const center =
+    stalls.length > 0
+      ? { lat: stalls[0].latitude, lng: stalls[0].longitude }
+      : defaultCenter;
 
   return (
     <div className="absolute inset-0 z-0">

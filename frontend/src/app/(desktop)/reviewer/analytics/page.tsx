@@ -5,9 +5,20 @@ import { useRouter } from "next/navigation";
 import { reviewerApi } from "@/lib/reviewerApi";
 import { ApiError } from "@/lib/api";
 
+type AnalyticsRow = {
+  date: string;
+  checks_performed: number;
+  scans_performed: number;
+  flags_created: number;
+  average_score?: number | null;
+  total_stalls?: number;
+  assessed_stalls?: number;
+  flagged_stalls?: number;
+};
+
 export default function AnalyticsPage() {
   const router = useRouter();
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<AnalyticsRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,7 +27,7 @@ export default function AnalyticsPage() {
     setError(null);
     try {
       const response = await reviewerApi.analytics(30);
-      setData(response.items || []);
+      setData((response.items as AnalyticsRow[]) || []);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         router.push("/login?next=/reviewer/analytics");

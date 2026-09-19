@@ -29,8 +29,8 @@ export default function ReportConcernForm({ stallCode }: ReportConcernFormProps)
         setNotes("");
         setCategory("hygiene");
       }, 3000);
-    } catch (err: any) {
-      setError(err.message || "Failed to submit report. Please try again.");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to submit report. Please try again.");
     } finally {
       setSubmitting(false);
     }

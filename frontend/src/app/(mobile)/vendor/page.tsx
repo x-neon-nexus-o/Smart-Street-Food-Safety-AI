@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { bandStyle } from "@/lib/hygieneStyles";
 import type { Stall, HygieneCheckSummary } from "@/lib/types";
 
@@ -36,12 +36,12 @@ export default function VendorDashboard() {
         const scoredChecks = checks.filter(c => c.status === "scored");
         setHistory(scoredChecks);
 
-      } catch (err: any) {
-        if (err.status === 401) {
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.status === 401) {
           router.replace("/login?next=/vendor");
           return;
         }
-        setError(err.message || "Could not load dashboard data.");
+        setError(err instanceof Error ? err.message : "Could not load dashboard data.");
       } finally {
         setLoading(false);
       }

@@ -16,6 +16,12 @@ qrcode[pil]==7.4.2
 
 # Unified Google Gemini SDK for OCR, Translation, and Vision.
 google-genai>=0.3.0
+# Google Auth for verifying Google ID tokens (OAuth login)
+google-auth>=2.0.0
+# Retry helper used by Gemini providers
+tenacity>=8.0.0
+# Direct bcrypt (replaces passlib wrapper for Python 3.14 compatibility)
+bcrypt>=4.0.0
 
 # Local translation (Phase 6) -- replaces Google Cloud Translation.
 # No API key, no quota, no billing; label text never leaves the machine.

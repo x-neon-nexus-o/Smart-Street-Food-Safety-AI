@@ -16,7 +16,7 @@ export default function VendorProfile() {
       try {
         const userData = await api.me();
         setUser(userData);
-      } catch (err) {
+      } catch {
         // Not authenticated
       } finally {
         setLoading(false);

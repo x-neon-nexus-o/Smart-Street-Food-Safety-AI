@@ -86,18 +86,18 @@ export const reviewerApi = {
     });
   },
 
-  async audit(skip = 0, limit = 50): Promise<any> {
+  async audit(skip = 0, limit = 50): Promise<{ items: unknown[]; total: number }> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
-    return apiRequest<any>(`/reviewer/audit?${params}`);
+    return apiRequest<{ items: unknown[]; total: number }>(`/reviewer/audit?${params}`);
   },
 
-  async analytics(days = 30): Promise<any> {
+  async analytics(days = 30): Promise<{ items: unknown[] }> {
     const params = new URLSearchParams({ days: String(days) });
-    return apiRequest<any>(`/reviewer/analytics?${params}`);
+    return apiRequest<{ items: unknown[] }>(`/reviewer/analytics?${params}`);
   },
 
-  async scanDetail(scanId: number): Promise<any> {
+  async scanDetail(scanId: number): Promise<import("./types").ScanResult> {
     // Falls back to the shared products API which reviewers have access to
-    return apiRequest<any>(`/products/scans/${scanId}`);
+    return apiRequest<import("./types").ScanResult>(`/products/scans/${scanId}`);
   }
 };

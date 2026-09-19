@@ -26,8 +26,8 @@ export default function ConsumerHome() {
       try {
         const data = await fetchPublicStallsMap();
         setStalls(data);
-      } catch (err: any) {
-        setError(err.message || "Failed to load stalls.");
+      } catch (err: unknown) {
+        setError((err instanceof Error ? err.message : String(err)) || "Failed to load stalls.");
       } finally {
         setLoading(false);
       }

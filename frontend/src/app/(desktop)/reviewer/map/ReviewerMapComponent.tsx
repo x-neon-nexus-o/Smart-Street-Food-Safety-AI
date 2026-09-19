@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -38,16 +37,12 @@ interface ReviewerMapProps {
 }
 
 export default function ReviewerMapComponent({ stalls }: ReviewerMapProps) {
-  const [center, setCenter] = useState<{ lat: number; lng: number }>({
-    lat: 20.5937,
-    lng: 78.9629,
-  });
-
-  useEffect(() => {
-    if (stalls.length > 0) {
-      setCenter({ lat: stalls[0].latitude, lng: stalls[0].longitude });
-    }
-  }, [stalls]);
+  const defaultCenter = { lat: 20.5937, lng: 78.9629 };
+  // Derive center from props without setState-in-effect
+  const center =
+    stalls.length > 0
+      ? { lat: stalls[0].latitude, lng: stalls[0].longitude }
+      : defaultCenter;
 
   return (
     <MapContainer

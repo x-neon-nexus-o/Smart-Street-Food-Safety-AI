@@ -29,8 +29,8 @@ export default function GoogleAuth({
       const response = await api.loginWithGoogle(credentialResponse.credential);
       setToken(response.access_token);
       onSuccess();
-    } catch (err: any) {
-      onError(err.message || "Failed to authenticate with Google.");
+    } catch (err: unknown) {
+      onError(err instanceof Error ? err.message : String(err) || "Failed to authenticate with Google.");
     } finally {
       setLoading(false);
     }

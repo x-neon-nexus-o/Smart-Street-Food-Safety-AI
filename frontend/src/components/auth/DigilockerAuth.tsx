@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/lib/api";
-import { setToken } from "@/lib/auth";
 
 export default function DigilockerAuth({
-  onSuccess,
   onError,
 }: {
   onSuccess: () => void;

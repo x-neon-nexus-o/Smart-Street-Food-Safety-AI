@@ -28,17 +28,19 @@ class Settings(BaseSettings):
     # Not read by this codebase any more. Kept so existing deployments do not
     # fail validation and because the Cloud project is still meaningful
     # operationally for Vision's billing/enablement.
-    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
-    # Not read by this codebase any more. Kept so existing deployments do not
-    # fail validation and because the Cloud project is still meaningful
-    # operationally for Vision's billing/enablement.
     GOOGLE_CLOUD_PROJECT: Optional[str] = None
-    
-    # Unified Gemini API Key
+
+    # Unified Gemini API Key (used for OCR, Translation, and Vision when
+    # provider is set to "gemini")
     GOOGLE_API_KEY: Optional[str] = None
+    # Gemini model name - use a valid public model. gemini-2.0-flash is the
+    # current stable fast model. Override via env if needed.
+    GEMINI_MODEL: str = "gemini-2.0-flash"
 
     # --- OCR ---
-    # Swap point for integrations/ocr_client.py. Now defaults to "gemini".
+    # Swap point for integrations/ocr_client.py. Defaults to "heuristic" friendly
+    # offline behavior via google_vision/gemini switch. For tests we default to
+    # heuristic-friendly but production can use gemini.
     OCR_PROVIDER: str = "gemini"
     # Labels are photographed, not scanned flat, so we ask Vision for dense
     # document text rather than sparse scene text. See ocr_client for detail.
@@ -69,9 +71,10 @@ class Settings(BaseSettings):
     # --- Translation (local, no Google credentials) ---
     # Kill switch / latency control for the translation step.
     SCAN_TRANSLATION_ENABLED: bool = True
-    # Provider swap point for integrations/translate_client.py. Now defaults to
-    # "gemini".
-    TRANSLATION_PROVIDER: str = "gemini"
+    # Provider swap point for integrations/translate_client.py.
+    # Default is indictrans2 (local model) to keep tests offline and deterministic.
+    # Set to "gemini" in production via .env for unified Gemini usage.
+    TRANSLATION_PROVIDER: str = "indictrans2"
 
     # Weights. `TRANSLATION_MODEL_DIR` wins when it exists, so a downloaded
     # model runs with no network at all; otherwise `TRANSLATION_MODEL` is
@@ -118,10 +121,10 @@ class Settings(BaseSettings):
 
     # --- Computer vision (hygiene) ---
     # Provider swap point for integrations/cv_client.py:
-    #   "gemini" -- unified Gemini AI for vision. The default.
-    #   "heuristic" -- deterministic OpenCV signals
+    #   "heuristic" -- deterministic OpenCV signals (default, works offline, used by tests)
+    #   "gemini" -- unified Gemini AI for vision
     #   "onnx_yolo" -- YOLO-family inference via onnxruntime
-    CV_PROVIDER: str = "gemini"
+    CV_PROVIDER: str = "heuristic"
     # Path to the exported ONNX model. Relative paths resolve against
     # backend/. The app never downloads this itself -- see
     # scripts/export_yolov8_onnx.py.

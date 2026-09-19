@@ -7,9 +7,20 @@ import { ApiError } from "@/lib/api";
 
 const PAGE_SIZE = 25;
 
+type AuditLog = {
+  id: number;
+  created_at: string;
+  actor_id: number;
+  actor_name?: string;
+  action: string;
+  target_type: string;
+  target_id: number;
+  details?: unknown;
+};
+
 export default function AuditPage() {
   const router = useRouter();
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -20,7 +31,7 @@ export default function AuditPage() {
     setError(null);
     try {
       const response = await reviewerApi.audit(page * PAGE_SIZE, PAGE_SIZE);
-      setLogs(response.items || []);
+      setLogs((response.items as AuditLog[]) || []);
       setTotal(response.total || 0);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {

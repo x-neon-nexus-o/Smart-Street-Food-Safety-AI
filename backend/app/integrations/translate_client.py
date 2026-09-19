@@ -41,9 +41,25 @@ from typing import Callable, Dict, Iterable, List, Optional
 from app.core.config import settings
 from app.integrations import indic_text
 from app.integrations.indictrans2 import IndicTrans2Runtime
-from google import genai
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
+
+# Map short codes to full language names for Gemini prompts
+_LANGUAGE_NAMES: dict[str, str] = {
+    "en": "English",
+    "hi": "Hindi",
+    "mr": "Marathi",
+    "bn": "Bengali",
+    "ta": "Tamil",
+    "te": "Telugu",
+    "gu": "Gujarati",
+    "kn": "Kannada",
+    "ml": "Malayalam",
+    "pa": "Punjabi",
+    "or": "Odia",
+    "as": "Assamese",
+}
 
 # English is the canonical source language. Translating it to itself would be
 # a pointless model call.
@@ -151,35 +167,39 @@ def _run_indictrans2(texts: List[str], target_language: str) -> List[str]:
 
 def _run_gemini(texts: List[str], target_language: str) -> List[str]:
     """Translate via Gemini API."""
+    try:
+        from google import genai
+    except ImportError as exc:
+        raise RuntimeError("google-genai is not installed") from exc
+
     if not settings.GOOGLE_API_KEY:
         raise ValueError("GOOGLE_API_KEY must be set for Gemini translation.")
-    
+
     client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-    
-    results = []
-    # Note: For better throughput, we could run these concurrently using threads or async.
-    from tenacity import retry, stop_after_attempt, wait_exponential
-    
+
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        reraise=True
+        reraise=True,
     )
-    def _call_api(prompt_text):
+    def _call_api(prompt_text: str):
         return client.models.generate_content(
-            model='gemini-3.6-flash',
+            model=getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash"),
             contents=prompt_text,
         )
 
+    target_name = _LANGUAGE_NAMES.get(target_language.lower(), target_language)
+    results: List[str] = []
     for text in texts:
         prompt = (
-            f"Translate the following text to {target_language}. "
+            f"Translate the following text to {target_name}. "
             "Return ONLY the translated text, with no explanations, markdown formatting, or original text. "
             f"Text to translate:\n\n{text}"
         )
         response = _call_api(prompt)
-        results.append(response.text.strip())
-        
+        translated = (getattr(response, "text", None) or "").strip()
+        results.append(translated if translated else text)
+
     return results
 
 
@@ -229,7 +249,24 @@ def translate_many(
 
     # An unsupported language is a caller/config problem, not a provider
     # outage: say so plainly and show English.
-    if indic_text.tag_for(target) is None:
+    # For indictrans2 we require a FLORES tag; for gemini we allow any language
+    # in our LANGUAGE_NAMES map or that has a FLORES tag.
+    provider = settings.TRANSLATION_PROVIDER
+    is_indic = provider == "indictrans2"
+    has_tag = indic_text.tag_for(target) is not None
+    has_gemini_name = target in _LANGUAGE_NAMES
+    if is_indic and not has_tag:
+        logger.warning(
+            "Translation requested for unsupported language %r; showing English",
+            target,
+        )
+        warning = (
+            f"'{target}' is not a language this deployment translates into. "
+            "Showing the original English."
+        )
+        return [_passthrough(text, warning=warning) for text in items]
+    if not is_indic and not (has_tag or has_gemini_name):
+        # Still guard against completely unknown codes, but be permissive for gemini
         logger.warning(
             "Translation requested for unsupported language %r; showing English",
             target,

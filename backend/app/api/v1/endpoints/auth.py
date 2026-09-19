@@ -7,8 +7,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from pydantic import BaseModel
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 
 from app.api.dependencies import get_current_active_user
 from app.core import security
@@ -41,8 +39,14 @@ def login_google(
         raise HTTPException(status_code=501, detail="Google Auth is not configured.")
 
     try:
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+    except ImportError as exc:
+        raise HTTPException(status_code=501, detail="Google Auth library not installed") from exc
+
+    try:
         # Verify the token
-        idinfo = id_token.verify_oauth2_token(
+        idinfo = google_id_token.verify_oauth2_token(
             request.token, google_requests.Request(), settings.GOOGLE_CLIENT_ID, clock_skew_in_seconds=60
         )
         
