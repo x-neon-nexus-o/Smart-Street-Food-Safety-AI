@@ -773,8 +773,15 @@ class GeminiProvider:
         self.indicator_labels = indicator_labels
 
     def detect(self, image_bgr: np.ndarray, view: ViewCategory) -> CvResult:
-        from google import genai
-        from google.genai import types
+        try:
+            from google import genai
+            from google.genai import types
+        except ImportError as exc:
+            raise CvError(
+                "google-genai not installed",
+                "Hygiene photo checks are misconfigured.",
+                retryable=False,
+            ) from exc
         import json
 
         if not settings.GOOGLE_API_KEY:

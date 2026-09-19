@@ -29,6 +29,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from tenacity import retry, stop_after_attempt, wait_exponential
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -198,9 +200,16 @@ def _run_google_vision(image_bytes: bytes) -> OcrResult:
 
 
 def _run_gemini(image_bytes: bytes) -> OcrResult:
-    from google import genai
-    from google.genai import types
-    from tenacity import retry, stop_after_attempt, wait_exponential
+    try:
+        from google import genai
+        from google.genai import types
+    except ImportError as exc:
+        logger.error("google-genai not installed: %s", exc)
+        raise OcrError(
+            "google-genai is not installed",
+            "Label reading is not configured correctly. Please contact support.",
+            retryable=False,
+        ) from exc
 
     if not settings.GOOGLE_API_KEY:
         raise OcrError(

@@ -167,7 +167,10 @@ def _run_indictrans2(texts: List[str], target_language: str) -> List[str]:
 
 def _run_gemini(texts: List[str], target_language: str) -> List[str]:
     """Translate via Gemini API."""
-    from google import genai
+    try:
+        from google import genai
+    except ImportError as exc:
+        raise RuntimeError("google-genai is not installed") from exc
 
     if not settings.GOOGLE_API_KEY:
         raise ValueError("GOOGLE_API_KEY must be set for Gemini translation.")
