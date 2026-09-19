@@ -113,8 +113,16 @@ def _extract_confidence(response) -> tuple[Optional[float], int, List[str]]:
 def _run_google_vision(image_bytes: bytes) -> OcrResult:
     # Imported lazily so the module can be imported (and the pipeline unit
     # tested) without the google-cloud-vision package or credentials present.
-    from google.api_core import exceptions as google_exceptions
-    from google.cloud import vision
+    try:
+        from google.api_core import exceptions as google_exceptions
+        from google.cloud import vision
+    except ImportError as exc:
+        logger.error("Google Cloud Vision not installed: %s", exc)
+        raise OcrError(
+            "google-cloud-vision is not installed",
+            "Label reading is not configured correctly. Please contact support.",
+            retryable=False,
+        ) from exc
 
     try:
         client = vision.ImageAnnotatorClient()
@@ -192,6 +200,7 @@ def _run_google_vision(image_bytes: bytes) -> OcrResult:
 def _run_gemini(image_bytes: bytes) -> OcrResult:
     from google import genai
     from google.genai import types
+    from tenacity import retry, stop_after_attempt, wait_exponential
 
     if not settings.GOOGLE_API_KEY:
         raise OcrError(
@@ -199,31 +208,29 @@ def _run_gemini(image_bytes: bytes) -> OcrResult:
             "Label reading is not configured correctly. Please contact support.",
             retryable=False,
         )
-    
-    try:
-        from tenacity import retry, stop_after_attempt, wait_exponential
-        from google.genai.errors import APIError
 
+    try:
         client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-        
+
         @retry(
             stop=stop_after_attempt(5),
             wait=wait_exponential(multiplier=1, min=2, max=10),
-            reraise=True
+            reraise=True,
         )
         def _call_api():
             return client.models.generate_content(
-                model='gemini-3.6-flash',
+                model=getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash"),
                 contents=[
-                    types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'),
-                    "Extract all visible text from this product label verbatim. Return ONLY the extracted text with no other explanations, markdown formatting, or tags."
-                ]
+                    types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                    "Extract all visible text from this product label verbatim. Return ONLY the extracted text with no other explanations, markdown formatting, or tags.",
+                ],
             )
-            
+
         response = _call_api()
-        text = response.text.strip()
-        word_count = len(text.split())
-        
+        raw_text = getattr(response, "text", None) or ""
+        text = raw_text.strip()
+        word_count = len(text.split()) if text else 0
+
         # Gemini does not provide per-word confidence. We pass None so the downstream
         # pipeline uses its heuristic image-quality-based fallback.
         return OcrResult(
@@ -232,7 +239,7 @@ def _run_gemini(image_bytes: bytes) -> OcrResult:
             word_count=word_count,
             engine="gemini",
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.error("Gemini OCR failed: %s", exc)
         raise OcrError(
             f"Gemini API Error: {exc}",

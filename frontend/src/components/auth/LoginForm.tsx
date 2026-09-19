@@ -55,7 +55,7 @@ export default function LoginForm({ nextPath }: { nextPath?: string }) {
     try {
       const user = await api.me();
       router.replace(nextPath || landingPathFor(user));
-    } catch (err) {
+    } catch {
       setError("Failed to load user profile after login.");
     }
   };

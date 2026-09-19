@@ -380,7 +380,7 @@ export async function fetchQrBlob(stallId: number): Promise<Blob> {
   let response: Response;
   try {
     response = await fetch(`${API_V1_URL}/stalls/${stallId}/qr.png`, { headers });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("DEBUG FETCH ERROR:", err);
     console.error("FETCH URL WAS:", `${API_V1_URL}/stalls/${stallId}/qr.png`);
     throw new ApiError(

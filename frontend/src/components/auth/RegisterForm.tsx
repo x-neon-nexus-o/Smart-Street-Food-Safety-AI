@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ApiError, api } from "@/lib/api";
-import { setToken } from "@/lib/auth";
-import type { CurrentUser } from "@/lib/types";
 import DigilockerAuth from "./DigilockerAuth";
 import { landingPathFor } from "./LoginForm";
 import dynamic from "next/dynamic";
@@ -57,7 +55,7 @@ export default function RegisterForm() {
     try {
       const user = await api.me();
       router.replace(landingPathFor(user));
-    } catch (err) {
+    } catch {
       setError("Failed to load user profile after registration.");
     }
   };
